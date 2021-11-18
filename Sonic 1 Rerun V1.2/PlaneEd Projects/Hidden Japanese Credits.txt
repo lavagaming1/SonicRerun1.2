@@ -1,0 +1,9 @@
+Palette File: ../pallet/sega2.bin
+Mapping File: ../mapeni/japcreds.bin
+Art File: ../artnem/japcreds.bin
+Mapping Compression: Enigma
+Art Compression: Nemesis
+x-Size: 0x28
+y-Size: 0x1C
+Palette Offset: 0x20
+Palette Length: 0x20

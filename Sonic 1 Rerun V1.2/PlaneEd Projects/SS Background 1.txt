@@ -1,0 +1,9 @@
+Palette File: ../pallet/special.bin
+Mapping File: ../mapeni/ssbg2.bin
+Art File: ../artnem/ssbg2.bin
+Mapping Compression: Enigma
+Art Compression: Nemesis
+x-Size: 0x08
+y-Size: 0x08
+Palette Offset: 0x20
+Palette Length: 0x40

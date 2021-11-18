@@ -1,0 +1,26 @@
+6
+4
+Green Hill 1
+Green Hill 2
+Green Hill 3
+Not Used
+Labyrinth 1
+Labyrinth 2
+Labyrinth 3
+Scrap Brain 3
+Marble 1
+Marble 2
+Marble 3
+Not Used
+Star Light 1
+Star Light 2
+Star Light 3
+Not Used
+Spring Yard 1
+Spring Yard 2
+Spring Yard 3
+Not Used
+Scrap Brain 1
+Scrap Brain 2
+Final
+Not Used

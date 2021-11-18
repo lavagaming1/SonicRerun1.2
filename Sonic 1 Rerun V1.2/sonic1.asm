@@ -6086,18 +6086,8 @@ Cred_ClrPallet:
 		move.b	#$8A,($FFFFD080).w ; load credits object
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		bsr.w	EndingDemoLoad
-		moveq	#0,d0
-		move.b	($FFFFFE10).w,d0
-		lsl.w	#4,d0
-		lea	(MainLoadBlocks).l,a2 ;	load block mappings etc
-		lea	(a2,d0.w),a2
-		moveq	#0,d0
-		move.b	(a2),d0
-		beq.s	loc_5862
-		bsr.w	LoadPLC		; load level patterns
+	;	bsr.w	EndingDemoLoad
 
-loc_5862:
 		moveq	#1,d0
 		move.w	#120,($FFFFF614).w ; display a credit for 2 seconds
 		bsr.w	Pal_FadeTo
@@ -6106,58 +6096,151 @@ Cred_WaitLoop:
 		move.b	#4,($FFFFF62A).w
 		bsr.w	DelayProgram
 		bsr.w	RunPLC_RAM
-		tst.w	($FFFFF614).w	; have 2 seconds elapsed?
-		bne.s	Cred_WaitLoop	; if not, branch
-		tst.l	($FFFFF680).w	; have level gfx finished decompressing?
-		bne.s	Cred_WaitLoop	; if not, branch
-		cmpi.w	#9,($FFFFFFF4).w ; have	the credits finished?
-		beq.w	TryAgainEnd	; if yes, branch
-		rts
+		bra.s   Cred_WaitLoop
+		; basically the format
+		; wip obj porting
+CreditsFramesAndTimer:
+               	moveq	#0,d0
+		move.b	$24(a0),d0
+		move.w	CreditsIndexTerribleEngine_Index(pc,d0.w),d1
+		jmp	CreditsIndexTerribleEngine_Index(pc,d1.w)
+; ===========================================================================
+CreditsIndexTerribleEngine_Index:	dc.w ObjScrollingCreditsint-CreditsIndexTerribleEngine_Index
+	                         	dc.w Follow_CreditsMove-CreditsIndexTerribleEngine_Index
+; ===========================================================================
 
-; ---------------------------------------------------------------------------
-; Ending sequence demo loading subroutine
-; ---------------------------------------------------------------------------
+ObjScrollingCreditsint:				; XREF: Obj8A_Index
+		addq.b	#2,$24(a0)
+		;move.w	#$120,8(a0)
+		;move.w	#$F0,$A(a0)
+		move.l	#Map_obj8A,4(a0)
+		move.w	#$5A0,2(a0)
+              	move.w	#$100,8(a0)
+             ; 	move.w  child_dx(a0),d0
+              ;	add.w   d0,x_pos(a0)
+              ;	moveq   #0,d0
+              ;  move.w  ObjTimer(a0),d0
+               ; move.b  d0,mapping_frame(a0)
+              ;  moveq   #0,d0
+               ; move.b  mapping_frame(a0),d0
+               ; add.w   d0,d0
+               ; lea     (CreditsTimerSetting).l,a2
+               ; add.w   d0,a2
+         ;       move.w  (a2)+,ObjTimer(a0)
+               ; move.l	#CreditsMappings,mappings(a0)
+	;	move.w	#ArtTile_ArtNem_Title_CreditsFont+$2000,art_tile(a0)
+	;	move.w	#$0,priority(a0)
+	;	move.b	#$40,width_pixels(a0)
+	;	move.b	#$18,height_pixels(a0)
+	;	move.l  #Follow_CreditsMove,(a0)
+Follow_CreditsMove:
+                       rts
+      ;  subq.w  #1,ObjTimer(a0)
+        ;    bpl.s   ReturnCreditsNothing
+       ;    jsr   ChildGetSavedFromParentDistance
+      ;      moveq    #0,d0
+     ;       move.b  mapping_frame(a0),d0
+    ;        add.w  d0,d0
+   ;         lea   (CreditSpriteStoppingLocation).l,a2
+  ;          add.w  d0,a2
+ ;           move.w      y_pos(a0),d1
+;	    cmp.w	(a2)+,d1
+           ;; bne.s       +
+          ;  moveq    #0,d0
+         ;   move.b  mapping_frame(a0),d0
+        ;    add.w  d0,d0
+       ;     lea   (DiffrentGoAwayTimer).l,a2
+      ;      add.w  d0,a2  ; advance in addr
+     ;       move.w     (a2)+,ObjTimer(a0)
+    ;        cmpi.b    #$8,mapping_frame(a0)
+   ;         bne.s     GoForNormalGoAwayCredit
+  ;          move.l    #StopThenMoveDownCredits,(a0)
+ ;           jmp   Draw_Sprite
+;GoForNormalGoAwayCredit:
+  ;          move.l    #StopThenGoAway_Credits,(a0)
+ ;           jmp   Draw_Sprite
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+;+
+     ;      move.w  #$2,d0
+   ;;        ext.l   d0
+  ;         add.w  d0,ChildTrackedY(a0)
+ ;          jmp   Draw_Sprite
+;ReturnCreditsNothing:
+    ;          rts
 
+;StopThenGoAway_Credits:
+ ;               subq.w #1,ObjTimer(a0)
+  ;              bne.s   +
+   ;             move.w  #$400,x_vel(a0)
 
-EndingDemoLoad:				; XREF: Credits
-		move.w	($FFFFFFF4).w,d0
-		andi.w	#$F,d0
-		add.w	d0,d0
-		addq.w	#1,($FFFFFFF4).w
-		cmpi.w	#9,($FFFFFFF4).w ; have	credits	finished?
-		bcc.s	EndDemo_Exit	; if yes, branch
-		cmpi.w	#4,($FFFFFFF4).w ; is SLZ demo running?
-		bne.s	EndDemo_Exit	; if not, branch
-		lea	(EndDemo_LampVar).l,a1 ; load lamppost variables
-		lea	($FFFFFE30).w,a2
-		move.w	#8,d0
+  ;              move.l  #CheckToDeleteCreditsName,(a0)
+ ;               jsr   ObjectMove
+;+
+ ;               jmp   Draw_Sprite
+;CheckToDeleteCreditsName:
+   ;             jsr   ObjectMove
+  ;              cmpi.w  #$200,x_pos(a0)
+ ;               bne.s  +
+;GoForDeletingCredits:
+ ;               jmp    DeleteObject
+;+
+  ;              jmp   MarkObjGone
+ ;
+;StopThenMoveDownCredits:
+    ;            subq.w #1,ObjTimer(a0)
+   ;             bne.s   +
+  ;              move.w  #$600,y_vel(a0)
+ ;               move.l  #CreditsMarkGoned,(a0)
 
-EndDemo_LampLoad:
-		move.l	(a1)+,(a2)+
-		dbf	d0,EndDemo_LampLoad
+;+
+ ;               jmp   Draw_Sprite
+;CreditsMarkGoned:
+	;	move.w	$14(a0),d0
+	;;	sub.w	(Camera_Y_pos).w,d0
+	;	addi.w	#$80,d0
+	;	cmpi.w	#$200,d0
+	;	bhi.w	GoForDeletingCredits
+	;	jsr   ObjectMoveAndFall
+	;	jmp	(Draw_Sprite).l
+CreditSpriteStoppingLocation:
+                      dc.w  $A0 ; under the lava gaming text
+                      dc.w  $B0 ; neto
+                      dc.w  $D0 ; pika
+                      dc.w  $F0 ; sthduth
+                      ;
+                      dc.w  $110 ; jay kurin
+                      dc.w  $130 ; sr gandy
+                      dc.w  $14A ; sanity
+                      ; same locations on screen
+                      dc.w  $110 ; chron
+                      dc.w  $130 ;  coolest fucker around
+                      dc.w  $120 ; random name text
+                      dc.w  $150 ; trickster text
+                      even
+                      ; time until the credits go away from screen
+DiffrentGoAwayTimer:
+                     dc.w  $40 ; under the lava gaming text
+                      dc.w  $10 ; neto
+                      dc.w  $20 ; pika
+                      dc.w  $30 ; sthduth
+                      ;
+                      dc.w  $40 ; jay kurin
+                      dc.w  $50 ; sr gandy
+                      dc.w  $50 ; sanity
+                      ; same locations on screen
 
-EndDemo_Exit:
-		rts	
-; End of function EndingDemoLoad
+                      dc.w  $20 ; chron
+                      dc.w  $40 ;  coolest fucker around
+                      dc.w  $50 ; random name text
+                      dc.w  $10 ; trickster text
+CreditsTimerSetting: dc.w  $0,$20,$30,$40,$50,$60,$70,$100,$10A,$1C0,$1A0
+                      even
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Levels used in the end sequence demos
 ; ---------------------------------------------------------------------------
-EndDemo_Levels:	incbin	misc\dm_ord2.bin
 
-; ---------------------------------------------------------------------------
-; Lamppost variables in the end sequence demo (Star Light Zone)
-; ---------------------------------------------------------------------------
-EndDemo_LampVar:
-		dc.b 1,	1		; XREF: EndingDemoLoad
-		dc.w $A00, $62C, $D
-		dc.l 0
-		dc.b 0,	0
-		dc.w $800, $957, $5CC, $4AB, $3A6, 0, $28C, 0, 0, $308
-		dc.b 1,	1
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; "TRY AGAIN" and "END"	screens

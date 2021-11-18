@@ -6099,6 +6099,9 @@ Cred_WaitLoop:
 		bra.s   Cred_WaitLoop
 		; basically the format
 		; wip obj porting
+ObjTimer = $3E
+ChildTrackedY = $3A
+child_dx = $36
 CreditsFramesAndTimer:
                	moveq	#0,d0
 		move.b	$24(a0),d0
@@ -6116,17 +6119,17 @@ ObjScrollingCreditsint:				; XREF: Obj8A_Index
 		move.l	#Map_obj8A,4(a0)
 		move.w	#$5A0,2(a0)
               	move.w	#$100,8(a0)
-             ; 	move.w  child_dx(a0),d0
-              ;	add.w   d0,x_pos(a0)
-              ;	moveq   #0,d0
-              ;  move.w  ObjTimer(a0),d0
-               ; move.b  d0,mapping_frame(a0)
-              ;  moveq   #0,d0
-               ; move.b  mapping_frame(a0),d0
-               ; add.w   d0,d0
-               ; lea     (CreditsTimerSetting).l,a2
-               ; add.w   d0,a2
-         ;       move.w  (a2)+,ObjTimer(a0)
+              	move.w  child_dx(a0),d0
+              	add.w   d0,$8(a0)
+              	moveq   #0,d0
+               move.w  ObjTimer(a0),d0
+                move.b  d0,$1A(a0)
+                moveq   #0,d0
+                move.b  $1A(a0),d0
+                add.w   d0,d0
+                lea     (CreditsTimerSetting).l,a2
+                add.w   d0,a2
+                move.w  (a2)+,ObjTimer(a0)
                ; move.l	#CreditsMappings,mappings(a0)
 	;	move.w	#ArtTile_ArtNem_Title_CreditsFont+$2000,art_tile(a0)
 	;	move.w	#$0,priority(a0)
@@ -6134,74 +6137,74 @@ ObjScrollingCreditsint:				; XREF: Obj8A_Index
 	;	move.b	#$18,height_pixels(a0)
 	;	move.l  #Follow_CreditsMove,(a0)
 Follow_CreditsMove:
-                       rts
-      ;  subq.w  #1,ObjTimer(a0)
-        ;    bpl.s   ReturnCreditsNothing
-       ;    jsr   ChildGetSavedFromParentDistance
-      ;      moveq    #0,d0
-     ;       move.b  mapping_frame(a0),d0
-    ;        add.w  d0,d0
-   ;         lea   (CreditSpriteStoppingLocation).l,a2
-  ;          add.w  d0,a2
- ;           move.w      y_pos(a0),d1
-;	    cmp.w	(a2)+,d1
-           ;; bne.s       +
-          ;  moveq    #0,d0
-         ;   move.b  mapping_frame(a0),d0
-        ;    add.w  d0,d0
-       ;     lea   (DiffrentGoAwayTimer).l,a2
-      ;      add.w  d0,a2  ; advance in addr
-     ;       move.w     (a2)+,ObjTimer(a0)
-    ;        cmpi.b    #$8,mapping_frame(a0)
-   ;         bne.s     GoForNormalGoAwayCredit
-  ;          move.l    #StopThenMoveDownCredits,(a0)
- ;           jmp   Draw_Sprite
-;GoForNormalGoAwayCredit:
-  ;          move.l    #StopThenGoAway_Credits,(a0)
- ;           jmp   Draw_Sprite
 
-;+
-     ;      move.w  #$2,d0
-   ;;        ext.l   d0
-  ;         add.w  d0,ChildTrackedY(a0)
- ;          jmp   Draw_Sprite
-;ReturnCreditsNothing:
-    ;          rts
+         subq.w  #1,ObjTimer(a0)
+            bpl.s   ReturnCreditsNothing
+           ;jsr   ChildGetSavedFromParentDistance
+           moveq    #0,d0
+            move.b  $1A(a0),d0
+            add.w  d0,d0
+            lea   (CreditSpriteStoppingLocation).l,a2
+           add.w  d0,a2
+           move.w      $A(a0),d1
+	    cmp.w	(a2)+,d1
+            bne.s       MoveSpriteBeforeCorndationsSet
+            moveq    #0,d0
+            move.b  $1A(a0),d0
+           add.w  d0,d0
+           lea   (DiffrentGoAwayTimer).l,a2
+           add.w  d0,a2  ; advance in addr
+           move.w     (a2)+,ObjTimer(a0)
+            cmpi.b    #$8,$1A(a0)
+            bne.s     GoForNormalGoAwayCredit
+           move.l    #StopThenMoveDownCredits,(a0)
+            jmp   DisplaySprite
+GoForNormalGoAwayCredit:
+           move.l    #StopThenGoAway_Credits,(a0)
+            jmp   DisplaySprite
 
-;StopThenGoAway_Credits:
- ;               subq.w #1,ObjTimer(a0)
-  ;              bne.s   +
-   ;             move.w  #$400,x_vel(a0)
+MoveSpriteBeforeCorndationsSet:
+           move.w  #$2,d0
+           ext.l   d0
+           add.w  d0,ChildTrackedY(a0)
+           jmp   DisplaySprite
+ReturnCreditsNothing:
+              rts
 
-  ;              move.l  #CheckToDeleteCreditsName,(a0)
- ;               jsr   ObjectMove
-;+
- ;               jmp   Draw_Sprite
-;CheckToDeleteCreditsName:
-   ;             jsr   ObjectMove
-  ;              cmpi.w  #$200,x_pos(a0)
- ;               bne.s  +
-;GoForDeletingCredits:
- ;               jmp    DeleteObject
-;+
-  ;              jmp   MarkObjGone
- ;
-;StopThenMoveDownCredits:
-    ;            subq.w #1,ObjTimer(a0)
-   ;             bne.s   +
-  ;              move.w  #$600,y_vel(a0)
- ;               move.l  #CreditsMarkGoned,(a0)
+StopThenGoAway_Credits:
+                subq.w #1,ObjTimer(a0)
+               bne.s   DisplayWhenTimerSetting_CountDown
+                move.w  #$400,$10(a0)
 
-;+
- ;               jmp   Draw_Sprite
-;CreditsMarkGoned:
-	;	move.w	$14(a0),d0
-	;;	sub.w	(Camera_Y_pos).w,d0
-	;	addi.w	#$80,d0
-	;	cmpi.w	#$200,d0
-	;	bhi.w	GoForDeletingCredits
-	;	jsr   ObjectMoveAndFall
-	;	jmp	(Draw_Sprite).l
+                move.l  #CheckToDeleteCreditsName,(a0)
+                jsr   SpeedToPos
+DisplayWhenTimerSetting_CountDown:
+                jmp   DisplaySprite
+CheckToDeleteCreditsName:
+                jsr   SpeedToPos
+                cmpi.w  #$200,$8(a0)
+                bne.s  DisplayWhenOnCorrectCordnates
+GoForDeletingCredits:
+                jmp    DeleteObject
+DisplayWhenOnCorrectCordnates:
+                jmp   MarkObjGone
+
+StopThenMoveDownCredits:
+                subq.w #1,ObjTimer(a0)
+                bne.s   DisplaySpriteTimer_0
+                move.w  #$600,$12(a0)
+                move.l  #CreditsMarkGoned,(a0)
+
+DisplaySpriteTimer_0:
+              jmp   DisplaySprite
+CreditsMarkGoned:
+		move.w	$A(a0),d0
+		sub.w	($FFFFF704).w,d0
+		addi.w	#$80,d0
+		cmpi.w	#$200,d0
+		bhi.w	GoForDeletingCredits
+		jsr   ObjectFall
+		jmp	(DisplaySprite).l
 CreditSpriteStoppingLocation:
                       dc.w  $A0 ; under the lava gaming text
                       dc.w  $B0 ; neto

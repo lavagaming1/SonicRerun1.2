@@ -3070,7 +3070,7 @@ SegaScreen:         ; XREF: GameModeArray
         move.w  ($FFFFF60C).w,d0
         ori.b   #$40,d0
         move.w  d0,($C00004).l
- 
+
 Sega_GotoTitle:
         move.b  #4,($FFFFF600).w; go to title screen
         rts
@@ -3130,7 +3130,7 @@ Title_ClrPallet:
 
 		moveq	#3,d0		; load Sonic's pallet
 		bsr.w	PalLoad1
-		move.b	#$8A,($FFFFD080).w ; load "SONIC TEAM PRESENTS"	object
+	;	move.b	#$8A,($FFFFD080).w ; load "SONIC TEAM PRESENTS"	object
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		bsr.w	Pal_FadeTo
@@ -3238,7 +3238,7 @@ loc_317C:
 		cmpi.w	#$1C00,d0	; has Sonic object passed x-position $1C00?
 		bcs.s	Title_ChkRegion	; if not, branch
 		move.b	#0,($FFFFF600).w ; go to Sega screen
-		rts	
+		rts
 ; ===========================================================================
 
 Title_ChkRegion:
@@ -6048,10 +6048,15 @@ Map_obj89:
 ; ---------------------------------------------------------------------------
 ; Credits ending sequence
 ; ---------------------------------------------------------------------------
-
+ObjPointer = $24 ; and $25, $26,$27
+ScreenParent = $1E
 Credits:				; XREF: GameModeArray
+       move.b	#$E4,d0
+		bsr.w	PlaySound_Special ; stop music
 		bsr.w	ClearPLC
 		bsr.w	Pal_FadeFrom
+		move	#$2700,sr
+		bsr.w	SoundDriverLoad
 		lea	($C00004).l,a6
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
@@ -6066,59 +6071,199 @@ Credits:				; XREF: GameModeArray
 		moveq	#0,d0
 		move.w	#$7FF,d1
 
-Cred_ClrObjRam:
+CreditsScreenObjRam:
 		move.l	d0,(a1)+
-		dbf	d1,Cred_ClrObjRam ; clear object RAM
+		dbf	d1,CreditsScreenObjRam ; fill object RAM ($D000-$EFFF) with	$0
 
-		move.l	#$74000002,($C00004).l
-		lea	(Nem_CreditText).l,a0 ;	load credits alphabet patterns
+		move.l	#$40000000,($C00004).l
+		lea	(Nem_JapNames).l,a0 ; load Japanese credits
 		bsr.w	NemDec
-		lea	($FFFFFB80).w,a1
+		move.l	#$54C00000,($C00004).l
+		lea	(Nem_CreditText).l,a0 ;	load alphabet
+		bsr.w	NemDec
+		lea	($FF0000).l,a1
+		lea	(Eni_JapNames).l,a0 ; load mappings for	Japanese credits
+		move.w	#0,d0
+		bsr.w	EniDec
+		lea	($FF0000).l,a1
+		move.l	#$40000003,d0
+		moveq	#$27,d1
+		moveq	#$1B,d2
+		bsr.w	ShowVDPGraphics
+ 	        lea	($FFFFFB80).w,a1
 		moveq	#0,d0
 		move.w	#$1F,d1
 
-Cred_ClrPallet:
+ClearTargettedPallete_Creidsts:
 		move.l	d0,(a1)+
-		dbf	d1,Cred_ClrPallet ; fill pallet	with black ($0000)
+		dbf	d1,ClearTargettedPallete_Creidsts ; fill pallet with 0	(black)
 
-		moveq	#3,d0
-		bsr.w	PalLoad1	; load Sonic's pallet
-		move.b	#$8A,($FFFFD080).w ; load credits object
+		moveq	#3,d0		; load Sonic's pallet
+		bsr.w	PalLoad1
+		move.b	#$8A,($FFFFD000).w
+		move.l	#ObjScrollingCreditFrames,($FFFFD000+$24).w ; load "SONIC TEAM PRESENTS"	object
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-	;	bsr.w	EndingDemoLoad
-
-		moveq	#1,d0
-		move.w	#120,($FFFFF614).w ; display a credit for 2 seconds
 		bsr.w	Pal_FadeTo
-
+		move	#$2700,sr
+		move.l	#$40000001,($C00004).l
+		lea	(Nem_TitleFg).l,a0 ; load title	screen patterns
+		bsr.w	NemDec
+		move.l	#$60000001,($C00004).l
+		lea	(Nem_TitleSonic).l,a0 ;	load Sonic title screen	patterns
+		bsr.w	NemDec
+		move.l	#$62000002,($C00004).l
+		lea	(Nem_TitleTM).l,a0 ; load "TM" patterns
+		bsr.w	NemDec
+		move.l	#$62400002,($C00004).l
+		lea	(Nem_TitleMenu).l,a0 ; load "Title Menu text" patterns
+		bsr.w	NemDec
 Cred_WaitLoop:
 		move.b	#4,($FFFFF62A).w
 		bsr.w	DelayProgram
 		bsr.w	RunPLC_RAM
+               	jsr	ObjectsLoad
+		jsr	BuildSprites
 		bra.s   Cred_WaitLoop
 		; basically the format
 		; wip obj porting
+RunObjectEC:
+        lea	($FFFFD000).w,a0 ; i hope thats the right addr
+	moveq	#$40,d7 ; how many credits to procces
+
+	move.l  ObjPointer(a0),d0
+	beq.s	RunNextObjectEC
+	movea.l	d0,a1
+	jsr	(a1)
+
+ ;loc_15FDC:
+RunNextObjectEC:
+        lea	$40(a0),a0 ; load 0bj address
+	dbf	d7,RunObjectEC
+RunObjects_EndEC:
+       rts
+
 ObjTimer = $3E
 ChildTrackedY = $3A
 child_dx = $36
-CreditsFramesAndTimer:
-               	moveq	#0,d0
-		move.b	$24(a0),d0
-		move.w	CreditsIndexTerribleEngine_Index(pc,d0.w),d1
-		jmp	CreditsIndexTerribleEngine_Index(pc,d1.w)
-; ===========================================================================
-CreditsIndexTerribleEngine_Index:	dc.w ObjScrollingCreditsint-CreditsIndexTerribleEngine_Index
-	                         	dc.w Follow_CreditsMove-CreditsIndexTerribleEngine_Index
-; ===========================================================================
-
-ObjScrollingCreditsint:				; XREF: Obj8A_Index
-		addq.b	#2,$24(a0)
-		;move.w	#$120,8(a0)
-		;move.w	#$F0,$A(a0)
-		move.l	#Map_obj8A,4(a0)
+ObjScrollingCreditFrames:
+            	move.w	#$100,$8(a0)
+                move.w	#$90,$C(a0) ; top of the screen
+                move.l	#Map_ConQuestCredits,4(a0)
 		move.w	#$5A0,2(a0)
-              	move.w	#$100,8(a0)
+		;move.w	#$0,priority(a0)
+		;move.b	#$18,width_pixels(a0)
+		;move.b	#$18,height_pixels(a0)
+		move.w  #$50,ObjTimer(a0)
+		move.l  #DisplayLettersCredits,$24(a0)
+
+DisplayLettersCredits:
+                subq.w  #1,ObjTimer(a0)
+                bpl.s   GoExcuteObjects_Credits
+                lea     CreditsChildData(pc),a2
+                lea     (Sonic1IdSettings).l,a4
+                moveq  #$9,d6
+                jsr      CreateChildComplexPositons3
+
+
+                move.l  #GoExcuteObjects_Credits,$24(a0)
+GoExcuteObjects_Credits:
+
+                jsr     SpeedToPos
+		jmp     DisplaySprite
+CreditScreenObjRam: equ $FFFFD800
+CreditsChildData:
+                  dc.w  CreditScreenObjRam+$40*2
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  1  ; neto
+                  dc.w  $0
+                  dc.w  -$DE;-$20 needed location
+
+                  dc.w  CreditScreenObjRam+$40*3
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  2 ; pika noob
+                  dc.w  $0
+                  dc.w  -$DE
+                  dc.w  CreditScreenObjRam+$40*4
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  3   ; sonic duthc
+                  dc.w  $0
+                  dc.w  -$DE
+CreditsChildData2:
+                  dc.w  CreditScreenObjRam+$40*5
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  4 ;
+                  dc.w  $0
+                  dc.w  -$DE
+                  dc.w  CreditScreenObjRam+$40*6
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  5   ;
+                   dc.w $0
+                  dc.w  -$DE
+
+                   dc.w  CreditScreenObjRam+$40*7
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  6   ; sanity
+                   dc.w $0
+                  dc.w  -$E0
+CreditsChildData3
+                   dc.w  CreditScreenObjRam+$40*8
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  7   ; chron ig
+                   dc.w $0
+                  dc.w  -$100
+                  ;
+
+                  dc.w  CreditScreenObjRam+$40*9
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  8   ;  coolest fucker around
+                   dc.w $60
+                  dc.w  -$110
+
+                  dc.w  CreditScreenObjRam+$40*$A
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  9   ; random name
+                   dc.w -$30
+                  dc.w  -$120
+
+                  dc.w  CreditScreenObjRam+$40*$B
+                  dc.l  CreditsFramesAndTimer
+                  dc.w  $A   ; trickster
+                   dc.w -$34
+                   dc.w  -$120
+
+Sonic1IdSettings: dc.b $8A
+                  dc.b $8A
+                  dc.b $8A
+                  dc.b $8A
+                  dc.b $8A
+                  dc.b $8A
+                  dc.b $8A
+                  dc.b $8A
+                  dc.b $8A
+                  dc.b $8A
+                  dc.b $8A
+                  even
+CreateChildComplexPositons3:
+		move.w   (a2)+,a3
+		lea      (a3),a1
+		move.w	a0,ScreenParent(a1)
+		move.l	$4(a0),$4(a1)
+		move.w	2(a0),2(a1)
+		move.b  (a4)+,(a1)
+		move.l	(a2)+,$24(a1)
+		move.w	(a2)+,ObjTimer(a1)
+		move.w	(a2)+,child_dx(a1)
+		move.w	(a2)+,ChildTrackedY(a1)
+		move.w	$8(a0),$8(a1)
+		move.w	$C(a0),$C(a1)
+		dbf	d6,CreateChildComplexPositons3
+		rts
+CreditsFramesAndTimer:
+                move.b  #$2,1(a0)
+		move.l	#Map_ConQuestCredits,4(a0)
+		move.w	#$5A0,2(a0)
+
               	move.w  child_dx(a0),d0
               	add.w   d0,$8(a0)
               	moveq   #0,d0
@@ -6135,18 +6280,18 @@ ObjScrollingCreditsint:				; XREF: Obj8A_Index
 	;	move.w	#$0,priority(a0)
 	;	move.b	#$40,width_pixels(a0)
 	;	move.b	#$18,height_pixels(a0)
-	;	move.l  #Follow_CreditsMove,(a0)
+		move.l  #Follow_CreditsMove,ObjPointer(a0)
 Follow_CreditsMove:
 
          subq.w  #1,ObjTimer(a0)
             bpl.s   ReturnCreditsNothing
-           ;jsr   ChildGetSavedFromParentDistance
+           jsr   ChildGetSavedFromParentDistance
            moveq    #0,d0
             move.b  $1A(a0),d0
             add.w  d0,d0
             lea   (CreditSpriteStoppingLocation).l,a2
            add.w  d0,a2
-           move.w      $A(a0),d1
+           move.w      $C(a0),d1
 	    cmp.w	(a2)+,d1
             bne.s       MoveSpriteBeforeCorndationsSet
             moveq    #0,d0
@@ -6157,10 +6302,10 @@ Follow_CreditsMove:
            move.w     (a2)+,ObjTimer(a0)
             cmpi.b    #$8,$1A(a0)
             bne.s     GoForNormalGoAwayCredit
-           move.l    #StopThenMoveDownCredits,(a0)
+           move.l    #StopThenMoveDownCredits,ObjPointer(a0)
             jmp   DisplaySprite
 GoForNormalGoAwayCredit:
-           move.l    #StopThenGoAway_Credits,(a0)
+           move.l    #StopThenGoAway_Credits,ObjPointer(a0)
             jmp   DisplaySprite
 
 MoveSpriteBeforeCorndationsSet:
@@ -6176,14 +6321,14 @@ StopThenGoAway_Credits:
                bne.s   DisplayWhenTimerSetting_CountDown
                 move.w  #$400,$10(a0)
 
-                move.l  #CheckToDeleteCreditsName,(a0)
+                move.l  #CheckToDeleteCreditsName,ObjPointer(a0)
                 jsr   SpeedToPos
 DisplayWhenTimerSetting_CountDown:
                 jmp   DisplaySprite
 CheckToDeleteCreditsName:
                 jsr   SpeedToPos
                 cmpi.w  #$200,$8(a0)
-                bne.s  DisplayWhenOnCorrectCordnates
+                bne.s  DisplaySpriteTimer_0
 GoForDeletingCredits:
                 jmp    DeleteObject
 DisplayWhenOnCorrectCordnates:
@@ -6193,12 +6338,12 @@ StopThenMoveDownCredits:
                 subq.w #1,ObjTimer(a0)
                 bne.s   DisplaySpriteTimer_0
                 move.w  #$600,$12(a0)
-                move.l  #CreditsMarkGoned,(a0)
+                move.l  #CreditsMarkGoned,ObjPointer(a0)
 
 DisplaySpriteTimer_0:
               jmp   DisplaySprite
 CreditsMarkGoned:
-		move.w	$A(a0),d0
+		move.w	$C(a0),d0
 		sub.w	($FFFFF704).w,d0
 		addi.w	#$80,d0
 		cmpi.w	#$200,d0
@@ -6238,7 +6383,57 @@ DiffrentGoAwayTimer:
                       dc.w  $10 ; trickster text
 CreditsTimerSetting: dc.w  $0,$20,$30,$40,$50,$60,$70,$100,$10A,$1C0,$1A0
                       even
+MainObjectDead:     ; unused feature in here
+   jmp DeleteObject
+ChildGetSavedFromParentDistance:
+        jsr    ChildObjectMove(pc)
 
+        movea.w	ScreenParent(a0),a1
+      ;  tst.l   ObjPointer(a1)  ; is parent alive ?    (if its nothing object aka it has issues deleting child sprites)
+      ;  beq.s    MainObjectDead     ; no then turn this child object to badnick parts
+      ;  cmpi.l  #Obj27,ObjPointer(a1)       ; is the parent an exploation ?
+      ;  beq.s   MainObjectDead     ; mark child object destroyed
+      ;  cmpi.l  #Obj58,ObjPointer(a1)       ; is the parent an exploation ? (if this routine is used in a boss)
+      ;  beq.s   MainObjectDead     ; mark child object destroyed
+        move.b   $22(a1),$22(a0)
+        btst    #0,$22(a0) ; is the data the child is getting from parent left or right
+        beq.s   LeftFacingChild
+ChildGetSavedFromParentDistance2:
+       	move.w	$8(a1),d0    ; get child x pos
+	move.w	child_dx(a0),d1  ; get its needed distance
+	add.w	d1,d0            ; give it the distance into x _pos distance from parent
+	move.w	d0,$8(a0)     ; ^
+	move.w	$C(a1),d0    ; same thing above but gets trancked y pos
+	move.w	ChildTrackedY(a0),d1
+	add.w	d1,d0
+	move.w	d0,$C(a0)
+        rts
+LeftFacingChild:
+       	move.w	$8(a1),d0   ; same as normal x pos but
+	move.w	child_dx(a0),d1
+	sub.w	d1,d0          ; subtract the distance
+	move.w	d0,$8(a0)
+
+	move.w	$C(a1),d0
+	move.w	ChildTrackedY(a0),d1    ; same but subtract vertical distance
+	sub.w	d1,d0
+	move.w	d0,$C(a0)
+           rts
+ChildObjectMove:
+	move.w	$10(a0),d0
+        bsr.w    ChildDo_xmove
+	move.w	$12(a0),d0
+	bra.w   Childdo_ymove
+ChildDo_xmove:
+	ext.l	d0
+	asl.l	#8,d0
+	add.l	d0,child_dx(a0)
+	rts
+Childdo_ymove:
+	ext.l	d0
+	asl.l	#8,d0
+	add.l	d0,ChildTrackedY(a0)
+	rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Levels used in the end sequence demos
@@ -13119,7 +13314,7 @@ Obj0F_Index:	dc.w Obj0F_Main-Obj0F_Index
 Obj0F_Main:				; XREF: Obj0F_Index
 		addq.b	#2,$24(a0)
 		move.w	#$D0,8(a0)
-		move.w	#$130,$A(a0)
+		move.w	#$130,$C(a0)
 		move.l	#Map_obj0F,4(a0)
 		move.w	#$200,2(a0)
 		cmpi.b	#2,$1A(a0)	; is object "PRESS START"?
@@ -13129,10 +13324,10 @@ Obj0F_Main:				; XREF: Obj0F_Index
 		bne.s	locret_A6F8	; if not, branch
 		move.w	#$2510,2(a0)	; "TM" specific	code
 		move.w	#$170,8(a0)
-		move.w	#$F8,$A(a0)
+		move.w	#$F8,$C(a0)
 
 locret_A6F8:				; XREF: Obj0F_Index
-		rts	
+		rts
 ; ===========================================================================
 
 Obj0F_PrsStart:				; XREF: Obj0F_Index
@@ -13142,7 +13337,7 @@ Obj0F_PrsStart:				; XREF: Obj0F_Index
 		move.w	#$512,2(a0)
 		move.l	#Map_obj0F_Menu,4(a0)
 		move.w	#$F5,8(a0)
-		move.w	#$150,$A(a0)
+		move.w	#$150,$C(a0)
 		rts
 
 Obj0F_PrsStart_Show:
@@ -16647,7 +16842,7 @@ loc_D348:
 loc_D358:
 		lea	$40(a0),a0	; next object
 		dbf	d7,loc_D348
-		rts	
+		rts
 ; ===========================================================================
 
 loc_D362:
@@ -16668,7 +16863,7 @@ loc_D378:
 
 loc_D37C:
 		dbf	d7,loc_D368
-		rts	
+		rts
 ; End of function ObjectsLoad
 
 ; ===========================================================================
@@ -16788,7 +16983,7 @@ DeleteObject2:
 loc_D646:
 		move.l	d1,(a1)+	; clear	the object RAM
 		dbf	d0,loc_D646	; repeat $F times (length of object RAM)
-		rts	
+		rts
 ; End of function DeleteObject
 
 ; ===========================================================================
@@ -16801,8 +16996,21 @@ BldSpr_ScrPos:	dc.l 0			; blank
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+Render_S1Sprite:
+		lea	($FFFFF800).w,a2 ; set address for sprite table
+		moveq	#0,d5
+		lea	($FFFFAC00).w,a4
+		moveq	#7,d7
+Rendering_loopsSlots:
+		tst.w	(a4)
+		beq.w	SpritesSize
+		moveq	#2,d6
 
+		movea.w	(a4,d6.w),a0
+		tst.l	$24(a0)
+		beq.w	Looping_MainSprites
 
+                jmp  BuilSprites_2
 BuildSprites:				; XREF: TitleScreen; et al
 		lea	($FFFFF800).w,a2 ; set address for sprite table
 		moveq	#0,d5
@@ -16818,6 +17026,7 @@ loc_D672:
 		movea.w	(a4,d6.w),a0
 		tst.b	(a0)
 		beq.w	loc_D726
+BuilSprites_2:
 		bclr	#7,1(a0)
 		move.b	1(a0),d0
 		move.b	d0,d4
@@ -16854,7 +17063,7 @@ loc_D672:
 ; ===========================================================================
 
 loc_D6DE:
-		move.w	$A(a0),d2
+		move.w	$C(a0),d2
 		move.w	8(a0),d3
 		bra.s	loc_D700
 ; ===========================================================================
@@ -16892,20 +17101,31 @@ loc_D726:
 		bne.w	loc_D672
 
 loc_D72E:
+         ;       cmpi.b  #$1C,($FFFFF600).w
+        ;        bne.s   SpritesSize
 		lea	$80(a4),a4
 		dbf	d7,loc_D66A
+GetSpritesDrawnFlags:
 		move.b	d5,($FFFFF62C).w
 		cmpi.b	#$50,d5
 		beq.s	loc_D748
 		move.l	#0,(a2)
-		rts	
+		rts
 ; ===========================================================================
 
 loc_D748:
 		move.b	#0,-5(a2)
-		rts	
+		rts
 ; End of function BuildSprites
+Looping_MainSprites:
+		addq.w	#2,d6
+		subq.w	#2,(a4)
+		bne.w	loc_D672
 
+SpritesSize:
+		lea	$80(a4),a4
+		dbf	d7,Rendering_loopsSlots
+                bra.s   GetSpritesDrawnFlags
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -30282,19 +30502,13 @@ Map_obj7D:
 ; ---------------------------------------------------------------------------
 
 Obj8A:					; XREF: Obj_Index
-		moveq	#0,d0
-		move.b	$24(a0),d0
-		move.w	Obj8A_Index(pc,d0.w),d1
-		jmp	Obj8A_Index(pc,d1.w)
-; ===========================================================================
-Obj8A_Index:	dc.w Obj8A_Main-Obj8A_Index
-		dc.w Obj8A_Display-Obj8A_Index
-; ===========================================================================
 
-Obj8A_Main:				; XREF: Obj8A_Index
-		addq.b	#2,$24(a0)
+                move.l     $24(A0),A1
+                jmp     (A1)
+ObjCreditsPoint:
+		move.l	#Obj8A_Display,$24(a0)
 		move.w	#$120,8(a0)
-		move.w	#$F0,$A(a0)
+		move.w	#$F0,$C(a0)
 		move.l	#Map_obj8A,4(a0)
 		move.w	#$5A0,2(a0)
 		move.w	($FFFFFFF4).w,d0 ; load	credits	index number
@@ -30322,7 +30536,9 @@ Obj8A_Display:				; XREF: Obj8A_Index
 ; ---------------------------------------------------------------------------
 Map_obj8A:
 	include "_maps\obj8A.asm"
-
+Map_ConQuestCredits:
+        incbin  "_maps\Credits_Map.bin"
+        even
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 3D - Eggman (GHZ)
